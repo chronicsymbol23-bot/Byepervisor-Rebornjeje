@@ -15,22 +15,19 @@ jobs:
           sudo apt update
           sudo apt install -y clang-18 lld-18 make unzip wget
 
-      - name: Download and Unpack SDK (Bypassing Git)
+      - name: Download and Unpack SDK
         run: |
-          # Fetching the official developer SDK zip package
           wget https://github.com -O $HOME/sdk.zip
           unzip $HOME/sdk.zip -d $HOME/ps5-workspace/
-          # Align folder names cleanly
           mv $HOME/ps5-workspace/sdk-main/* $HOME/ps5-workspace/sdk/
           
-          # Compile the local SDK framework
+          # Force single-core execution (-j1) to eliminate Out-Of-Memory Exit Code 9 crashes
           cd $HOME/ps5-workspace/sdk
-          make
+          make -j1
           echo "PS5_PAYLOAD_SDK=$HOME/ps5-workspace/sdk" >> $GITHUB_ENV
 
       - name: Download and Unpack Byepervisor Reborn Source
         run: |
-          # Fetching the exploit package zip archive
           wget https://github.com -O $HOME/byepervisor.zip
           unzip $HOME/byepervisor.zip -d $HOME/ps5-workspace/
           mv $HOME/ps5-workspace/Byepervisor-Reborn-main/* $HOME/ps5-workspace/Byepervisor-Reborn/
@@ -38,8 +35,8 @@ jobs:
       - name: Compile Target 13.60 Binary
         run: |
           cd $HOME/ps5-workspace/Byepervisor-Reborn
-          # Cross-compile utilizing the clean localized environment variables
-          make FIRMWARE=13.60 CC=clang-18 CXX=clang++-18
+          # Compile sequential layout using the fixed SDK mapping values
+          make -j1 FIRMWARE=13.60 CC=clang-18 CXX=clang++-18
 
       - name: Upload Finished ELF Artifact
         uses: actions/upload-artifact@v4
