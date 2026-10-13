@@ -1,4 +1,4 @@
-name: Build Byepervisor ELF
+name: Build Byepervisor Reborn ELF
 on: [workflow_dispatch]
 
 jobs:
@@ -17,24 +17,25 @@ jobs:
 
       - name: Clone ps5-payload-dev SDK
         run: |
+          # Download and compile the base system SDK layout natively
           git clone https://github.com ${{ env.WORKSPACE_DIR }}/sdk
           cd ${{ env.WORKSPACE_DIR }}/sdk
           make
-          # Register environment globally for cross-compilation linking
           echo "PS5_PAYLOAD_SDK=${{ env.WORKSPACE_DIR }}/sdk" >> $GITHUB_ENV
 
-      - name: Clone Byepervisor Source Code
+      - name: Clone Byepervisor Reborn Source Code
         run: |
-          git clone --recursive https://github.com ${{ env.WORKSPACE_DIR }}/Byepervisor
+          # Target the correct 13.60-capable repository architecture
+          git clone --recursive https://github.com ${{ env.WORKSPACE_DIR }}/Byepervisor-Reborn
 
       - name: Compile Target 13.60 Binary
         run: |
-          cd ${{ env.WORKSPACE_DIR }}/Byepervisor
-          # Force compiler parameters matching the SDK landscape
+          cd ${{ env.WORKSPACE_DIR }}/Byepervisor-Reborn
+          # Run the cross-compilation pipeline utilizing the linked SDK offsets
           make FIRMWARE=13.60 CC=clang-18 CXX=clang++-18
 
       - name: Upload Finished ELF Artifact
         uses: actions/upload-artifact@v4
         with:
           name: byepervisor-13.60-binary
-          path: ${{ env.WORKSPACE_DIR }}/Byepervisor/byepervisor.elf
+          path: ${{ env.WORKSPACE_DIR }}/Byepervisor-Reborn/byepervisor.elf
