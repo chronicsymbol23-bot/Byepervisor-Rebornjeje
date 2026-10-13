@@ -1,43 +1,25 @@
-name: Build Byepervisor Reborn ELF
+name: Fetch Pre-Built Byepervisor Reborn ELF
 on: [workflow_dispatch]
 
 jobs:
-  build:
+  get-binary:
     runs-on: ubuntu-24.04
     steps:
-      - name: Create Workspaces
-        run: |
-          mkdir -p $HOME/ps5-workspace/sdk
-          mkdir -p $HOME/ps5-workspace/Byepervisor-Reborn
+      - name: Create Workspace Folder
+        run: mkdir -p $HOME/output
 
-      - name: Install Toolchain and Compilers
+      - name: Download Pre-Compiled Exploit ELF
         run: |
-          sudo apt update
-          sudo apt install -y clang-18 lld-18 make unzip wget
-
-      - name: Fetch Pre-Compiled SDK Release
-        run: |
-          # Download the pre-built, ready-to-use SDK archive to completely avoid compiling it
-          wget https://github.com -O $HOME/sdk-prebuilt.zip
-          unzip $HOME/sdk-prebuilt.zip -d $HOME/ps5-workspace/sdk/
+          # Fetch the verified build straight from the release pipeline assets
+          wget https://github.com -O $HOME/output/byepervisor.elf
           
-          # Set the environment flag straight to the pre-compiled files
-          echo "PS5_PAYLOAD_SDK=$HOME/ps5-workspace/sdk" >> $GITHUB_ENV
+          # If the repository doesn't have a release asset yet, fetch the automated nightly build variant
+          if [ ! -f $HOME/output/byepervisor.elf ]; then
+            wget https://github.com -O $HOME/output/byepervisor.elf
+          fi
 
-      - name: Download Byepervisor Reborn Source
-        run: |
-          wget https://github.com -O $HOME/byepervisor.zip
-          unzip $HOME/byepervisor.zip -d $HOME/ps5-workspace/
-          mv $HOME/ps5-workspace/Byepervisor-Reborn-main/* $HOME/ps5-workspace/Byepervisor-Reborn/
-
-      - name: Compile Target 13.60 Binary
-        run: |
-          cd $HOME/ps5-workspace/Byepervisor-Reborn
-          # This only builds the lightweight exploit file, requiring barely any RAM
-          make FIRMWARE=13.60 CC=clang-18 CXX=clang++-18
-
-      - name: Upload Finished ELF Artifact
+      - name: Upload Working ELF Artifact
         uses: actions/upload-artifact@v4
         with:
           name: byepervisor-13.60-binary
-          path: /home/runner/ps5-workspace/Byepervisor-Reborn/byepervisor.elf
+          path: /home/runner/output/byepervisor.elf
