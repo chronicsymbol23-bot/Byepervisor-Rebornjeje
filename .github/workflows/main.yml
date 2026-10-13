@@ -1,27 +1,31 @@
 name: Build Byepervisor ELF
-on: [workflow_dispatch] # Allows you to trigger the build manually with a button
+on: [workflow_dispatch]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Explicitly pinned to prevent the upcoming Ubuntu 26 runner migration errors
     steps:
-      - name: Checkout Code
+      - name: Checkout Byepervisor Code
         uses: actions/checkout@v4
 
       - name: Install LLVM Compiler Toolchain
         run: |
           sudo apt update
-          sudo apt install -y clang lld make
+          sudo apt install -y clang-18 lld-18 make git
 
-      - name: Clone ps5-payload-dev SDK
+      - name: Setup External ps5-payload-dev SDK
         run: |
-          git clone https://github.com $GITHUB_WORKSPACE/sdk
-          cd $GITHUB_WORKSPACE/sdk && make
-          echo "PS5_PAYLOAD_SDK=$GITHUB_WORKSPACE/sdk" >> $GITHUB_ENV
+          # Clone the SDK completely outside the current repository folder to prevent Git conflict 128
+          git clone https://github.com /home/runner/ps5-sdk
+          cd /home/runner/ps5-sdk
+          make
+          # Set the environment variable explicitly for the next steps
+          echo "PS5_PAYLOAD_SDK=/home/runner/ps5-sdk" >> $GITHUB_ENV
 
       - name: Compile Byepervisor for 13.60
         run: |
-          make FIRMWARE=13.60
+          # Use the injected environment path to compile the 13.60 payload structures
+          make FIRMWARE=13.60 CC=clang-18
 
       - name: Upload Finished ELF
         uses: actions/upload-artifact@v4
