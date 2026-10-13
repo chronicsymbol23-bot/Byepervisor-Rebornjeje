@@ -5,7 +5,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - name: Create Isolated Directories
+      - name: Create Workspaces
         run: |
           mkdir -p $HOME/ps5-workspace/sdk
           mkdir -p $HOME/ps5-workspace/Byepervisor-Reborn
@@ -15,18 +15,16 @@ jobs:
           sudo apt update
           sudo apt install -y clang-18 lld-18 make unzip wget
 
-      - name: Download and Unpack SDK
+      - name: Fetch Pre-Compiled SDK Release
         run: |
-          wget https://github.com -O $HOME/sdk.zip
-          unzip $HOME/sdk.zip -d $HOME/ps5-workspace/
-          mv $HOME/ps5-workspace/sdk-main/* $HOME/ps5-workspace/sdk/
+          # Download the pre-built, ready-to-use SDK archive to completely avoid compiling it
+          wget https://github.com -O $HOME/sdk-prebuilt.zip
+          unzip $HOME/sdk-prebuilt.zip -d $HOME/ps5-workspace/sdk/
           
-          # Force single-core execution (-j1) to eliminate Out-Of-Memory Exit Code 9 crashes
-          cd $HOME/ps5-workspace/sdk
-          make -j1
+          # Set the environment flag straight to the pre-compiled files
           echo "PS5_PAYLOAD_SDK=$HOME/ps5-workspace/sdk" >> $GITHUB_ENV
 
-      - name: Download and Unpack Byepervisor Reborn Source
+      - name: Download Byepervisor Reborn Source
         run: |
           wget https://github.com -O $HOME/byepervisor.zip
           unzip $HOME/byepervisor.zip -d $HOME/ps5-workspace/
@@ -35,8 +33,8 @@ jobs:
       - name: Compile Target 13.60 Binary
         run: |
           cd $HOME/ps5-workspace/Byepervisor-Reborn
-          # Compile sequential layout using the fixed SDK mapping values
-          make -j1 FIRMWARE=13.60 CC=clang-18 CXX=clang++-18
+          # This only builds the lightweight exploit file, requiring barely any RAM
+          make FIRMWARE=13.60 CC=clang-18 CXX=clang++-18
 
       - name: Upload Finished ELF Artifact
         uses: actions/upload-artifact@v4
