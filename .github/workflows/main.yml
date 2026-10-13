@@ -1,0 +1,30 @@
+name: Build Byepervisor ELF
+on: [workflow_dispatch] # Allows you to trigger the build manually with a button
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install LLVM Compiler Toolchain
+        run: |
+          sudo apt update
+          sudo apt install -y clang lld make
+
+      - name: Clone ps5-payload-dev SDK
+        run: |
+          git clone https://github.com $GITHUB_WORKSPACE/sdk
+          cd $GITHUB_WORKSPACE/sdk && make
+          echo "PS5_PAYLOAD_SDK=$GITHUB_WORKSPACE/sdk" >> $GITHUB_ENV
+
+      - name: Compile Byepervisor for 13.60
+        run: |
+          make FIRMWARE=13.60
+
+      - name: Upload Finished ELF
+        uses: actions/upload-artifact@v4
+        with:
+          name: byepervisor-13.60-binary
+          path: byepervisor.elf
