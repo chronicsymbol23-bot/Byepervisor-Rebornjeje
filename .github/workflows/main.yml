@@ -3,32 +3,38 @@ on: [workflow_dispatch]
 
 jobs:
   build:
-    runs-on: ubuntu-24.04  # Explicitly pinned to prevent the upcoming Ubuntu 26 runner migration errors
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout Byepervisor Code
-        uses: actions/checkout@v4
+      - name: Create Workspace Environment
+        run: |
+          mkdir -p $HOME/ps5-workspace
+          echo "WORKSPACE_DIR=$HOME/ps5-workspace" >> $GITHUB_ENV
 
-      - name: Install LLVM Compiler Toolchain
+      - name: Install Toolchain and Compilers
         run: |
           sudo apt update
           sudo apt install -y clang-18 lld-18 make git
 
-      - name: Setup External ps5-payload-dev SDK
+      - name: Clone ps5-payload-dev SDK
         run: |
-          # Clone the SDK completely outside the current repository folder to prevent Git conflict 128
-          git clone https://github.com /home/runner/ps5-sdk
-          cd /home/runner/ps5-sdk
+          git clone https://github.com ${{ env.WORKSPACE_DIR }}/sdk
+          cd ${{ env.WORKSPACE_DIR }}/sdk
           make
-          # Set the environment variable explicitly for the next steps
-          echo "PS5_PAYLOAD_SDK=/home/runner/ps5-sdk" >> $GITHUB_ENV
+          # Register environment globally for cross-compilation linking
+          echo "PS5_PAYLOAD_SDK=${{ env.WORKSPACE_DIR }}/sdk" >> $GITHUB_ENV
 
-      - name: Compile Byepervisor for 13.60
+      - name: Clone Byepervisor Source Code
         run: |
-          # Use the injected environment path to compile the 13.60 payload structures
-          make FIRMWARE=13.60 CC=clang-18
+          git clone --recursive https://github.com ${{ env.WORKSPACE_DIR }}/Byepervisor
 
-      - name: Upload Finished ELF
+      - name: Compile Target 13.60 Binary
+        run: |
+          cd ${{ env.WORKSPACE_DIR }}/Byepervisor
+          # Force compiler parameters matching the SDK landscape
+          make FIRMWARE=13.60 CC=clang-18 CXX=clang++-18
+
+      - name: Upload Finished ELF Artifact
         uses: actions/upload-artifact@v4
         with:
           name: byepervisor-13.60-binary
-          path: byepervisor.elf
+          path: ${{ env.WORKSPACE_DIR }}/Byepervisor/byepervisor.elf
